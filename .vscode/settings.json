@@ -1,3 +1,14 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:system"
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "openInExternalApp.openMapper": [
+        {
+            "extensionName": "xlsx",
+            "apps": [
+                {
+                    "title": "Excel",
+                    "openCommand": "C:\\Program Files\\Microsoft Office\\root\\Office16\\EXCEL.EXE"
+                }
+            ]
+        }
+    ]
 }

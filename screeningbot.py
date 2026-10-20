@@ -1,37 +1,22 @@
 import pandas as pd
 import yfinance as yf
 from concurrent.futures import ThreadPoolExecutor
-
+import time
+import subprocess
+import os
 VALID_SECTORS = {
     "basic-materials", "communication-services", "consumer-cyclical",
     "consumer-defensive", "energy", "financial-services", "healthcare",
     "industrials", "real-estate", "technology", "utilities",
 }
 
-FALLBACK_TECH_TICKERS = [
-    "AAPL",
-    "MSFT",
-    "NVDA",
-    "GOOGL",
-    "AMZN",
-    "META",
-    "AVGO",
-    "CRM",
-    "ORCL",
-    "AMD",
-    "INTC",
-    "CSCO",
-    "IBM",
-    "QCOM",
-    "ADBE",
-    "NFLX",
-    "SAP",
-    "PLTR",
-    "UBER",
-    "SHOP",
+FALLBACK_TICKERS = [
+    "NVDA", "MSFT", "AAPL", "GOOGL", "AMZN", "META", "AVGO", "TSLA", "BRK-B", "LLY",
+    "JPM", "WMT", "V", "ORCL", "MA", "XOM", "NFLX", "COST", "JNJ", "HD",
+    "PLTR", "PG", "BAC", "ABBV", "CVX", "KO", "AMD", "GE", "CSCO", "TMUS",
+    "WFC", "MS", "CRM", "PM", "IBM", "ABT", "AXP", "LIN", "MCD", "GS",
+    "MRK", "DIS", "T", "UBER", "RTX", "PEP", "CAT", "NOW", "INTU", "VZ",
 ]
-
-
 
 
 
@@ -53,7 +38,7 @@ def get_tickers(sector):
             return None
         raise
 
-    return FALLBACK_TECH_TICKERS
+    return FALLBACK_TICKERS
 
 
 def fetch_ticker_data(ticker):
@@ -108,14 +93,29 @@ def main():
                 data.append(result)
 
     df = pd.DataFrame(data)
+
     if df.empty:
         print("No valid tickers returned from the provider.")
         return
-
-    df["pe rank"] = df["trailing pe"].rank()
-    df["p/b rank"] = df["p/b data"].rank()
+    df['pe rank'] = df['trailing pe'].rank()
+    df['p/b rank'] = df['p/b data'].rank()    
+    by_pb = df.sort_values(by='p/b rank', ignore_index=True).drop(columns='pe rank')
+    by_pe = df.sort_values(by='pe rank', ignore_index=True).drop(columns='p/b rank')
+    combined = df[(df['pe rank'] <= 50) & (df['p/b rank'] <= 50)]
+    try:
+        with pd.ExcelWriter(path=userpath) as writer:
+            by_pb.to_excel(writer, sheet_name="by p-b", index=False)
+            by_pe.to_excel(writer, sheet_name="by p-e", index=False)
+            combined.to_excel(writer, sheet_name="combined top 50",index=False)
+    except Exception as e:
+        backuppath = os.path.join(os.getcwd(),'financialdata.xlsx')
+        with pd.ExcelWriter(path=backuppath) as writer:
+                    by_pb.to_excel(writer, sheet_name="by p-b", index=False)
+                    by_pe.to_excel(writer, sheet_name="by p-e", index=False)
+                    combined.to_excel(writer, sheet_name="combined top 50",index=False)
+        
     print(df)
-    df.to_excel(f"{choice}_tickers.xlsx", index=False)
+   
 
 
 
@@ -146,6 +146,13 @@ def ask_sector():
 
 
 if __name__ == "__main__":
+    subprocess.run(["cls" if os.name == "nt" else "clear"])
+
+    print("Please input the full path to the folder.")
+    time.sleep(1)
+    print("DO NOT ENTER A RELATIVE PATH.")
+    userfolder = input("PATH: ")
+
     while True:
         choice = ask_sector()
         if choice is None:
@@ -154,5 +161,9 @@ if __name__ == "__main__":
 
         if input(f"Confirm '{choice}'? (y/n): ").strip().lower() != "y":
             continue
+
+        userpath = os.path.join(userfolder, f"{choice}-financialdata.xlsx")
+        print(f"PATH={userpath}")
+        time.sleep(1)
 
         main()
